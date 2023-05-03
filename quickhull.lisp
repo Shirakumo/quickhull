@@ -49,9 +49,9 @@
   (disabled-p NIL :type boolean))
 
 (defstruct (face-data
-            (:constructor face-data (index entered-from-half-edge)))
+            (:constructor face-data (&optional index entered-from-half-edge)))
   (index 0 :type (unsigned-byte 32))
-  (entered-from-half-edge 0 :type (unsigned-byte 32)))
+  (entered-from-half-edge (1- (ash 1 32)) :type (unsigned-byte 32)))
 
 (defstruct (face
             (:include plane)
@@ -59,6 +59,7 @@
   (half-edge 0 :type (unsigned-byte 32))
   (farthest-point 0 :type (unsigned-byte 32))
   (farthest-point-distance 0.0 :type single-float)
+  (checked-iteration 0 :type (unsigned-byte 32))
   (visible-p T :type boolean)
   (in-stack-p T :type boolean)
   (disabled-p T :type boolean)
@@ -127,12 +128,16 @@
       T)))
 
 (defun disable-face (mesh-builder index)
-  (setf (disabled-p (aref (faces mesh-builder) index)) T)
-  (vector-push-extend index (disabled-faces mesh-builder)))
+  (let ((face (aref (faces mesh-builder) index)))
+    (setf (disabled-p face) T)
+    (vector-push-extend index (disabled-faces mesh-builder))
+    (shiftf (face-points-on-positive-side face) (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))))
 
 (defun disable-half-edge (mesh-builder index)
-  (setf (disabled-p (aref (half-edges mesh-builder) index)) T)
-  (vector-push-extend index (disabled-half-edges mesh-builder)))
+  (let ((half-edge (aref (half-edges mesh-builder) index)))
+    (setf (disabled-p half-edge) T)
+    (vector-push-extend index (disabled-half-edges mesh-builder))
+    half-edge))
 
 (defun face-vertices (mesh-builder face)
   (let ((half-edge (aref (half-edges mesh-builder) (face-half-edge face))))
@@ -147,7 +152,7 @@
 (defun face-half-edges (mesh-builder face)
   (let ((half-edge (face-half-edge face)))
     (loop repeat 3
-          collect (aref (half-edges mesh-builder) half-edge)
+          collect half-edge
           do (setf half-edge (half-edge-next (aref (half-edges mesh-builder) half-edge))))))
 
 (defclass half-edge-mesh ()
@@ -167,7 +172,8 @@
           do (unless (face-disabled-p face)
                (setf (gethash i face-mapping) (length faces))
                (vector-push-extend (face-half-edge face) faces)
-               (loop for half-edge in (face-half-edges mesh-builder face)
+               (loop for half-edge-index in (face-half-edges mesh-builder face)
+                     for half-edge = (aref half-edges half-edge-index)
                      for vertex = (half-edge-end half-edge)
                      do (unless (gethash vertex vertex-mapping)
                           (setf (gethash vertex vertex-mapping) (length points))
@@ -214,7 +220,8 @@
                (setf (sbit processed-faces face-index) 1)
                (let* ((face (aref faces face-index))
                       (vertex-indices (face-vertices mesh-builder face)))
-                 (loop for half-edge in (face-half-edges mesh-builder face)
+                 (loop for half-edge-index in (face-half-edges mesh-builder face)
+                       for half-edge = (aref half-edges half-edge-index)
                        for face = (half-edge-face (aref half-edges (half-edge-opp half-edge)))
                        do (when (and (not (sbitp processed-faces face))
                                      (not (face-disabled-p (aref faces face))))
@@ -319,6 +326,20 @@
                (loop for face across (faces mesh-builder)
                      until (add-point face points i eps2))))))))))
 
+(defun reorder-horizon-edges (horizon-edges half-edges)
+  (loop for i from 0 below (length horizon-edges)
+        for end = (half-edge-end (aref half-edges (aref horizon-edges i)))
+        for found-next = NIL
+        do (loop for j from (1+ i) below (length horizon-edges)
+                 for begin = (half-edge-end (aref half-edges (half-edge-opp (aref half-edges (aref horizon-edges j)))))
+                 do (when (= begin end)
+                      (rotatef (aref horizon-edges j) (aref horizon-edges (1+ i)))
+                      (setf found-next T)
+                      (return)))
+           (unless found-next
+             (return NIL))
+        finally (return T)))
+
 (defun quickhull (vertices &key (eps 0.0001))
   (let* ((points (vertices->points vertices))
          (extrema (compute-extrema points))
@@ -327,14 +348,117 @@
          (eps2 (expt eps 2))
          (mesh-builder (compute-initial-mesh points extrema eps2))
          (faces (faces mesh-builder))
+         (half-edges (half-edges mesh-builder))
          (visible-faces (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
          (horizon-edges (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
          (possibly-visible-faces (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
-         (face-list () )) ;; should be a double-ended queue
+         (new-face-indices (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
+         (new-half-edge-indices (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
+         (disabled-face-points (make-array 0 :element-type T :adjustable T :fill-pointer T))
+         (face-list ())) ;; should be a double-ended queue
     (loop for i from 0 below 4
           for face = (aref faces i)
           do (when (< 0 (length (face-points-on-positive-side face)))
                (push i face-list)
                (setf (face-in-stack-p face) T)))
-    ;; TODO
+    ;; Process our face stack
+    (loop with iter = 0
+          while face-list
+          do (incf iter)
+             (let ((top-face-index (pop face-list))
+                   (top-face (aref faces top-face-index)))
+               (setf (face-in-stack-p top-face) NIL)
+               (unless (< 0 (face-points-on-positive-side top-face))
+                 (let* ((active-index (face-farthest-point top-face))
+                        (active-point (aref points active-index)))
+                   ;; Figure out the set of visible faces
+                   (setf (fill-pointer horizon-edges) 0)
+                   (setf (fill-pointer possibly-visible-faces) 0)
+                   (setf (fill-pointer visible-faces) 0)
+                   (vector-push-extend (face-data top-face-index) possibly-visible-faces)
+                   (loop while (< 0 (length possibly-visible-faces))
+                         for face-data = (vector-pop possibly-visible-faces)
+                         for face = (aref faces (face-data-index face-data))
+                         do (cond ((and (face-visible-p face) (= iter (face-checked-iteration face))))
+                                  ((< 0 (+ (plane-distance face) (v. face active-point)))
+                                   (setf (face-checked-iteration face) iter)
+                                   (setf (face-visible-p face) T)
+                                   (setf (face-horizon-edges face) 0)
+                                   (vector-push-extend (face-data-index face-data) visible-faces)
+                                   (loop for half-edge-index in (face-half-edges mesh-builder face)
+                                         for half-edge = (aref half-edges half-edge-index)
+                                         do (when (/= (face-data-entered-from-half-edge face-data) (half-edge-opp face))
+                                              (vector-push-extend (face-data (half-edge-opp face) half-edge-index) possibly-visible-faces))))
+                                  (T
+                                   (setf (face-checked-iteration face) iter)
+                                   (setf (face-visible-p face) NIL)
+                                   (vector-push-extend (face-data-entered-from-half-edge face-data) horizon-edges)
+                                   (let* ((face (aref faces (half-edge-face (aref half-edges (face-data-entered-from-half-edge face-data)))))
+                                          (index (position (face-data-entered-from-half-edge face-data) (face-half-edges face))))
+                                     (setf (face-horizon-edges face) (logior (face-horizon-edges face) (ash 1 index)))))))
+                   (let ((horizon-edge-count (length horizon-edges)))
+                     ;; Reorder the edges to form a loop. If this fails, skip it.
+                     (cond ((not (reorder-horizon-edges horizon-edges half-edges))
+                            (warn 'edge-solve-failed)
+                            (delete active-index (face-points-on-positive-side top-face)))
+                           (T
+                            ;; Disable edges and faces not on the horizon
+                            (setf (fill-pointer new-face-indices) 0)
+                            (setf (fill-pointer new-half-edge-indices) 0)
+                            (setf (fill-pointer disabled-face-points) 0)
+                            (loop with disable-counter = 0
+                                  for face-index across visible-faces
+                                  for disabled-face = (aref faces face-index)
+                                  for half-edges = (face-half-edges mesh-builder disabled-face)
+                                  do (dotimes (j 3)
+                                       (when (= 0 (logand (ash 1 j) (face-horizon-edges disabled-face)))
+                                         (cond ((< disable-counter (* horizon-edge-count 2))
+                                                (vector-push-extend new-half-edge-indices (aref half-edges j))
+                                                (incf disable-counter))
+                                               (T
+                                                (disable-half-edge mesh-builder (aref half-edges j))))))
+                                     (let ((points (disable-face mesh-builder face-index)))
+                                       (when (< 0 (length points))
+                                         (vector-push-extend points disabled-face-points))))
+                            (when (< disable-counter (* horizon-edge-count 2))
+                              (dotimes (i (- (* horizon-edge-count 2) disable-counter))
+                                (vector-push-extend (add-half-edge mesh-builder) new-half-edge-indices)))
+                            ;; Create new faces using the edge loop
+                            (loop for i from 0 below horizon-edge-count
+                                  for ab = (aref horizon-edges i)
+                                  for (a b) = (half-edge-vertices mesh-builder (aref half-edges ab))
+                                  for c = active-point-index
+                                  for new-face-index = (add-face mesh-builder)
+                                  for new-face = (aref faces new-face-index)
+                                  do (vector-push-extend new-face-index new-face-indices)
+                                     (let* ((ca (aref new-half-edge-indices (+ (* 2 i) 0)))
+                                            (bc (aref new-half-edge-indices (+ (* 2 i) 1)))
+                                            (he-ab (aref half-edges ab))
+                                            (he-bc (aref half-edges bc))
+                                            (he-ca (aref half-edges ca)))
+                                       (setf (half-edge-next he-ab) bc)
+                                       (setf (half-edge-next he-bc) ca)
+                                       (setf (half-edge-next he-ca) ab)
+                                       (setf (half-edge-face he-ab) new-face-index)
+                                       (setf (half-edge-face he-bc) new-face-index)
+                                       (setf (half-edge-face he-ca) new-face-index)
+                                       (setf (half-edge-end he-ca) a)
+                                       (setf (half-edge-end he-bc) c)
+                                       (setf (half-edge-opp he-ca) (aref new-half-edge-indices (1- (if (< 0 i) (* i 2) (* horizon-edge-count 2)))))
+                                       (setf (half-edge-opp he-bc) (aref new-half-edge-indices (mod (* 2 (1+ i)) (* horizon-edge-count 2))))
+                                       (v<- new-face (triangle-normal (aref points a) (aref points b) active-point))
+                                       (setf (plane-distance new-face) (- (v. new-face active-point)))))
+                            ;; Reassign points that were on the positive side of the disabled faces
+                            (loop for disabled-points across disabled-face-points
+                                  do (loop for point across disabled-points
+                                           do (when (/= point active-point-index)
+                                                (loop for j from 0 below horizon-edge-count
+                                                      until (add-point (aref faces (aref new-face-indices j)) points point eps2)))))
+                            ;; Increase our stack again if necessary
+                            (loop for new-face-index across new-face-indices
+                                  for new-face = (aref faces new-face-index)
+                                  do (when (and (< 0 (length (face-points-on-positive-side face)))
+                                                (not (face-in-stack-p new-face)))
+                                       (push new-face-index face-list)
+                                       (setf (face-in-stack-p face) T))))))))))
     (make-instance 'convex-hull :mesh-builder mesh-builder :vertices vertices)))
