@@ -1,0 +1,8 @@
+# About Quickhull
+This is an implementation of the Quickhull algorithm by Barber, Dobkin, and Huhdanpaa[1] for constructing a convex hull of a 3D mesh, based on the implementation by Antti Kuukka[2].
+
+## How To
+; TODO
+
+[1] https://dpd.cs.princeton.edu/Papers/BarberDobkinHuhdanpaa.pdf
+[2] https://github.com/akuukka/quickhull
