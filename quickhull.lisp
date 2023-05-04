@@ -11,7 +11,7 @@
   (direction (vec 0 0 0) :type vec3))
 
 (defun ray (position direction)
-  (%plane (vx position) (vy position) (vz position) direction))
+  (%ray (vx position) (vy position) (vz position) direction))
 
 (defstruct (plane
             (:include vec3)
@@ -72,7 +72,7 @@
    (disabled-faces :initform (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T) :accessor disabled-faces)
    (disabled-half-edges :initform (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T) :accessor disabled-half-edges)))
 
-(defmethod shared-initialize ((builder mesh-builder) slots &key a b c d)
+(defmethod initialize-instance :after ((builder mesh-builder) &key a b c d)
   (when (and a b c d)
     (let ((faces (faces builder))
           (half-edges (half-edges builder)))
@@ -195,14 +195,10 @@
                                               (gethash (half-edge-next x) half-edge-mapping)))
                                  half-edges))))
 
-(defclass convex-hull ()
-  ((vertices :accessor vertices)
-   (faces :accessor faces)))
-
 (defun sbitp (array index)
   (= 1 (sbit array index)))
 
-(defmethod initialize-instance :after ((hull convex-hull) &key mesh-builder points)
+(defun extract-convex-hull (mesh-builder points)
   (let* ((vertex-index-mapping (make-hash-table :test 'eql))
          (faces (faces mesh-builder))
          (half-edges (half-edges mesh-builder))
@@ -239,8 +235,8 @@
                                 (vector-push-extend (vy point) vertices)
                                 (vector-push-extend (vz point) vertices))))
                  (incf index-ptr 3))))
-    (setf (vertices hull) (coerce vertices '(simple-array single-float (*))))
-    (setf (faces hull) indices)))
+    (values (coerce vertices '(simple-array single-float (*)))
+            indices)))
 
 (defun vertices->points (vertices)
   (let ((points (make-array (truncate (length vertices) 3))))
@@ -325,7 +321,7 @@
                    for normal = (triangle-normal (aref points a) (aref points b) (aref points c))
                    do (v<- face normal)
                       (setf (face-distance face) (- (v. normal (aref points a)))))
-             (dotimes (i (length points))
+             (dotimes (i (length points) mesh-builder)
                (loop for face across (faces mesh-builder)
                      until (add-point face points i eps2))))))))))
 
@@ -344,6 +340,7 @@
         finally (return T)))
 
 (defun quickhull (vertices &key (eps 0.0001))
+  ;; TODO: Avoid copying of vertices to points
   (let* ((points (vertices->points vertices))
          (extrema (compute-extrema points))
          (scale (compute-scale extrema points))
@@ -465,4 +462,4 @@
                                                 (not (face-in-stack-p face)))
                                        (push face-index face-list)
                                        (setf (face-in-stack-p face) T))))))))))
-    (make-instance 'convex-hull :mesh-builder mesh-builder :vertices vertices)))
+    (extract-convex-hull mesh-builder vertices)))
