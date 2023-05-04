@@ -14,6 +14,8 @@
   :bug-tracker "https://github.com/shirakumo/quickhull/issues"
   :source-control (:git "https://github.com/shirakumo/quickhull.git")
   :serial T
-  :components ((:file "quickhull"))
+  :components ((:file "package")
+               (:file "support")
+               (:file "quickhull"))
   :depends-on (:3d-vectors
                :documentation-utils))
