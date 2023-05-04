@@ -273,7 +273,7 @@
                      until (add-point face points i eps2))))))))))
 
 (defun reorder-horizon-edges (horizon-edges half-edges)
-  (loop for i from 0 below (length horizon-edges)
+  (loop for i from 0 below (1- (length horizon-edges))
         for end = (half-edge-end (aref half-edges (aref horizon-edges i)))
         for found-next = NIL
         do (loop for j from (1+ i) below (length horizon-edges)
@@ -308,14 +308,14 @@
                (vector-push-extend i face-list)
                (setf (face-in-stack-p face) T)))
     ;; Process our face stack
-    (loop for iter from 0
+    (loop for iter from 1
           while (< iter (length face-list))
-          do (let* ((top-face-index (aref face-list iter))
+          do (let* ((top-face-index (aref face-list (1- iter)))
                     (top-face (aref faces top-face-index)))
                (setf (face-in-stack-p top-face) NIL)
                (when (and (not (face-disabled-p top-face))
                           (< 0 (length (face-points-on-positive-side top-face))))
-                 (print top-face-index)
+                 (format T "Processing: ~a~%" top-face-index)
                  (let* ((active-index (face-farthest-point top-face))
                         (active-point (aref points active-index)))
                    ;; Figure out the set of visible faces
@@ -325,8 +325,14 @@
                    (vector-push-extend (face-data top-face-index) possibly-visible-faces)
                    (loop while (< 0 (length possibly-visible-faces))
                          for face-data = (vector-pop possibly-visible-faces)
-                         for face = (aref faces (print (face-data-index face-data)))
+                         for face = (aref faces (face-data-index face-data))
                          do (cond ((and (face-visible-p face) (= iter (face-checked-iteration face))))
+                                  ((= iter (face-checked-iteration face))
+                                   (setf (face-visible-p face) NIL)
+                                   (vector-push-extend (face-data-entered-from-half-edge face-data) horizon-edges)
+                                   (let* ((face (aref faces (half-edge-face (aref half-edges (face-data-entered-from-half-edge face-data)))))
+                                          (index (position (face-data-entered-from-half-edge face-data) (face-half-edges mesh-builder face))))
+                                     (setf (face-horizon-edges face) (logior (face-horizon-edges face) (ash 1 index)))))
                                   ((above-plane-p active-point (face-plane face))
                                    (setf (face-checked-iteration face) iter)
                                    (setf (face-visible-p face) T)
@@ -334,8 +340,8 @@
                                    (vector-push-extend (face-data-index face-data) visible-faces)
                                    (loop for half-edge-index in (face-half-edges mesh-builder face)
                                          for half-edge = (aref half-edges half-edge-index)
-                                         do (when (/= (face-data-entered-from-half-edge face-data) (half-edge-opp half-edge))
-                                              (vector-push-extend (face-data (half-edge-opp half-edge) half-edge-index) possibly-visible-faces))))
+                                         do (when (/= (half-edge-opp half-edge) (face-data-entered-from-half-edge face-data))
+                                              (vector-push-extend (face-data (half-edge-face (aref half-edges (half-edge-opp half-edge))) half-edge-index) possibly-visible-faces))))
                                   (T
                                    (setf (face-checked-iteration face) iter)
                                    (setf (face-visible-p face) NIL)
@@ -345,11 +351,14 @@
                                      (setf (face-horizon-edges face) (logior (face-horizon-edges face) (ash 1 index)))))))
                    (let ((horizon-edge-count (length horizon-edges))
                          (disable-counter 0))
+                     (print horizon-edges)
                      ;; Reorder the edges to form a loop. If this fails, skip it.
                      (cond ((not (reorder-horizon-edges horizon-edges half-edges))
                             (warn "Failed to solve for edge.")
                             (setf (face-points-on-positive-side top-face) (delete active-index (face-points-on-positive-side top-face))))
                            (T
+                            (print horizon-edges)
+                            (print visible-faces)
                             ;; Disable edges and faces not on the horizon
                             (setf (fill-pointer new-face-indices) 0)
                             (setf (fill-pointer new-half-edge-indices) 0)
