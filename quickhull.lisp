@@ -44,7 +44,7 @@
   (vc (v- a c) (v- b c)))
 
 (defun above-plane-p (point plane)
-  (<= 0 (+ (plane-distance plane) (v. plane point))))
+  (< 0 (+ (plane-distance plane) (v. plane point))))
 
 (defstruct (half-edge
             (:constructor half-edge (&optional end opp face next)))
@@ -55,9 +55,8 @@
   (disabled-p NIL :type boolean))
 
 (defmethod print-object ((edge half-edge) stream)
-  (format stream "#{end: ~a opp: ~a face: ~a next: ~a disabled: ~a}"
-          (half-edge-end edge) (half-edge-opp edge) (half-edge-face edge)
-          (half-edge-next edge) (half-edge-disabled-p edge)))
+  (format stream "#{end: ~a opp: ~a face: ~a next: ~a}"
+          (half-edge-end edge) (half-edge-opp edge) (half-edge-face edge) (half-edge-next edge)))
 
 (defstruct (face-data
             (:constructor face-data (&optional index entered-from-half-edge)))
@@ -79,10 +78,11 @@
 
 (defmethod print-object ((face face) stream)
   (let ((plane (face-plane face)))
-    (format stream "#{plane: P(~a,~a,~a,~a) he: ~d most-distant: ~a visible: ~a in-stack: ~a horizon: ~a points: ~a}"
+    (format stream "#{plane: P(~a,~a,~a,~a) he: ~d most-distant: ~a visible: ~a in-stack: ~a horizon: ~a disabled: ~a points: ~a}"
             (vx plane) (vy plane) (vz plane) (plane-distance plane)
             (face-half-edge face) (face-farthest-point face) 
-            (face-visible-p face) (face-in-stack-p face) (face-horizon-edges face) (face-points-on-positive-side face))))
+            (face-visible-p face) (face-in-stack-p face) (face-horizon-edges face) 
+            (face-disabled-p face) (face-points-on-positive-side face))))
 
 (defclass mesh-builder ()
   ((faces :initform (make-array 0 :adjustable T :fill-pointer T) :accessor faces)
@@ -286,6 +286,11 @@
              (return NIL))
         finally (return T)))
 
+(defun dbg (format &rest args)
+  (if (stringp format)
+      (format *debug-io* "~&~?~%" format args)
+      (apply #'dbg "~a" format args)))
+
 (defun quickhull (vertices &key (eps 0.0001))
   ;; TODO: Avoid copying of vertices to points
   (let* ((points (vertices->points vertices))
@@ -307,15 +312,17 @@
           do (when (< 0 (length (face-points-on-positive-side face)))
                (vector-push-extend i face-list)
                (setf (face-in-stack-p face) T)))
+    (dbg "Initial List: ~a" face-list)
     ;; Process our face stack
     (loop for iter from 1
-          while (< iter (length face-list))
+          while (< (1- iter) (length face-list))
           do (let* ((top-face-index (aref face-list (1- iter)))
                     (top-face (aref faces top-face-index)))
+               (dbg "--------")
                (setf (face-in-stack-p top-face) NIL)
                (when (and (not (face-disabled-p top-face))
                           (< 0 (length (face-points-on-positive-side top-face))))
-                 (format T "Processing: ~a~%" top-face-index)
+                 (dbg "Processing: ~a" top-face-index)
                  (let* ((active-index (face-farthest-point top-face))
                         (active-point (aref points active-index)))
                    ;; Figure out the set of visible faces
@@ -326,7 +333,8 @@
                    (loop while (< 0 (length possibly-visible-faces))
                          for face-data = (vector-pop possibly-visible-faces)
                          for face = (aref faces (face-data-index face-data))
-                         do (cond ((and (face-visible-p face) (= iter (face-checked-iteration face))))
+                         do (dbg "Examining: ~a" (face-data-index face-data))
+                            (cond ((and (face-visible-p face) (= iter (face-checked-iteration face))))
                                   ((= iter (face-checked-iteration face))
                                    (setf (face-visible-p face) NIL)
                                    (vector-push-extend (face-data-entered-from-half-edge face-data) horizon-edges)
@@ -341,6 +349,7 @@
                                    (loop for half-edge-index in (face-half-edges mesh-builder face)
                                          for half-edge = (aref half-edges half-edge-index)
                                          do (when (/= (half-edge-opp half-edge) (face-data-entered-from-half-edge face-data))
+                                              (dbg "Queueing: ~a" (half-edge-face (aref half-edges (half-edge-opp half-edge))))
                                               (vector-push-extend (face-data (half-edge-face (aref half-edges (half-edge-opp half-edge))) half-edge-index) possibly-visible-faces))))
                                   (T
                                    (setf (face-checked-iteration face) iter)
@@ -351,14 +360,14 @@
                                      (setf (face-horizon-edges face) (logior (face-horizon-edges face) (ash 1 index)))))))
                    (let ((horizon-edge-count (length horizon-edges))
                          (disable-counter 0))
-                     (print horizon-edges)
+                     (dbg "Hor: ~a" horizon-edges)
                      ;; Reorder the edges to form a loop. If this fails, skip it.
                      (cond ((not (reorder-horizon-edges horizon-edges half-edges))
                             (warn "Failed to solve for edge.")
                             (setf (face-points-on-positive-side top-face) (delete active-index (face-points-on-positive-side top-face))))
                            (T
-                            (print horizon-edges)
-                            (print visible-faces)
+                            (dbg "Hor: ~a" horizon-edges)
+                            (dbg "Vis: ~a" visible-faces)
                             ;; Disable edges and faces not on the horizon
                             (setf (fill-pointer new-face-indices) 0)
                             (setf (fill-pointer new-half-edge-indices) 0)
@@ -370,14 +379,19 @@
                                            for half-edge in half-edges
                                            do (when (= 0 (logand (ash 1 j) (face-horizon-edges disabled-face)))
                                                 (cond ((< disable-counter (* horizon-edge-count 2))
+                                                       (dbg "Push ~a" half-edge)
                                                        (vector-push-extend half-edge new-half-edge-indices)
                                                        (incf disable-counter))
                                                       (T
+                                                       (dbg "Disable ~a" half-edge)
                                                        (disable-half-edge mesh-builder half-edge)))))
+                                     (dbg "Dis ~a" face-index)
                                      (let ((points (disable-face mesh-builder face-index)))
                                        (when (< 0 (length points))
+                                         (dbg "Pushing")
                                          (vector-push-extend points disabled-face-points))))
                             (when (< disable-counter (* horizon-edge-count 2))
+                              (dbg "Needed: ~a" (- (* horizon-edge-count 2) disable-counter))
                               (dotimes (i (- (* horizon-edge-count 2) disable-counter))
                                 (vector-push-extend (add-half-edge mesh-builder) new-half-edge-indices)))
                             ;; Create new faces using the edge loop
@@ -387,7 +401,8 @@
                                   for c = active-index
                                   for new-face-index = (add-face mesh-builder)
                                   for new-face = (aref faces new-face-index)
-                                  do (vector-push-extend new-face-index new-face-indices)
+                                  do (dbg "A: ~a B: ~a C: ~a" a b c)
+                                     (vector-push-extend new-face-index new-face-indices)
                                      (let* ((ca (aref new-half-edge-indices (+ (* 2 i) 0)))
                                             (bc (aref new-half-edge-indices (+ (* 2 i) 1)))
                                             (he-ab (aref half-edges ab))
@@ -403,19 +418,26 @@
                                        (setf (half-edge-end he-bc) c)
                                        (setf (half-edge-opp he-ca) (aref new-half-edge-indices (1- (if (< 0 i) (* i 2) (* horizon-edge-count 2)))))
                                        (setf (half-edge-opp he-bc) (aref new-half-edge-indices (mod (* 2 (1+ i)) (* horizon-edge-count 2))))
+                                       (dbg "CAOPP: ~a" (half-edge-opp he-ca))
+                                       (dbg "BCOPP: ~a" (half-edge-opp he-bc))
+                                       (setf (face-half-edge new-face) ab)
+                                       (setf (face-disabled-p new-face) NIL)
                                        (setf (face-plane new-face) (plane (triangle-normal (aref points a) (aref points b) active-point) active-point))))
                             ;; Reassign points that were on the positive side of the disabled faces
                             (loop for disabled-points across disabled-face-points
                                   do (loop for point across disabled-points
-                                           do (when (/= point active-index)
-                                                (loop for j from 0 below horizon-edge-count
-                                                      until (add-point (aref faces (aref new-face-indices j)) points point eps2)))))
+                                           do (if (/= point active-index)
+                                                  (loop initially (dbg "B ~a" point)
+                                                        for j from 0 below horizon-edge-count
+                                                        until (add-point (aref faces (aref new-face-indices j)) points point eps2))
+                                                  (dbg "A ~a" point))))
                             ;; Increase our stack again if necessary
                             (loop for face-index across new-face-indices
                                   for face = (aref faces face-index)
                                   do (when (and (< 0 (length (face-points-on-positive-side face)))
                                                 (not (face-in-stack-p face)))
-                                       (push face-index face-list)
+                                       (dbg "Pushing face: ~a" face-index)
+                                       (vector-push-extend face-index face-list)
                                        (setf (face-in-stack-p face) T))))))))))
     (describe mesh-builder)
     (values mesh-builder points)))
@@ -466,21 +488,24 @@
   (= 1 (sbit array index)))
 
 (defun extract-convex-hull (mesh-builder points)
+  (dbg "============")
   (let* ((vertex-index-mapping (make-hash-table :test 'eql))
          (faces (faces mesh-builder))
          (half-edges (half-edges mesh-builder))
          (vertices (make-array 0 :element-type 'single-float :adjustable T :fill-pointer T))
          (processed-faces (make-array (length faces) :element-type 'bit))
-         (face-stack (loop for i from 0 below (length faces)
-                           unless (face-disabled-p (aref faces i))
-                           collect i))
-         (indices (make-array (- (length faces) (length (disabled-faces mesh-builder)))
+         (face-stack (list (loop for i from 0 below (length faces)
+                                 unless (face-disabled-p (aref faces i))
+                                 return i)))
+         (indices (make-array (* 3 (- (length faces) (length (disabled-faces mesh-builder))))
                               :element-type '(unsigned-byte 32)))
          (index-ptr 0))
+    (dbg "Initial Stack: ~a" face-stack)
     (loop for face-index = (pop face-stack)
           while face-index
           do (unless (sbitp processed-faces face-index)
                (setf (sbit processed-faces face-index) 1)
+               (dbg "Top: ~a" face-index)
                (let* ((face (aref faces face-index))
                       (vertex-indices (face-vertices mesh-builder face)))
                  (loop for half-edge-index in (face-half-edges mesh-builder face)
@@ -489,18 +514,21 @@
                        do (when (and (not (sbitp processed-faces face))
                                      (not (face-disabled-p (aref faces face))))
                             (push face face-stack)))
-                 (loop for vertex in vertex-indices
-                       for index-offset in '(0 2 1) ;; CCW reordering
+                 (loop for cons on vertex-indices
+                       for vertex = (car cons)
                        for mapping = (gethash vertex vertex-index-mapping)
-                       do (if mapping
-                              (setf (aref indices (+ index-ptr index-offset)) mapping)
-                              (let ((index (truncate (length vertices) 3))
-                                    (point (aref points vertex)))
-                                (setf (gethash vertex vertex-index-mapping) index)
-                                (setf (aref indices (+ index-ptr index-offset)) index)
-                                (vector-push-extend (vx point) vertices)
-                                (vector-push-extend (vy point) vertices)
-                                (vector-push-extend (vz point) vertices))))
+                       do (cond (mapping
+                                 (setf (car cons) mapping))
+                                (T
+                                 (let ((point (aref points vertex)))
+                                   (vector-push-extend (vx point) vertices)
+                                   (vector-push-extend (vy point) vertices)
+                                   (vector-push-extend (vz point) vertices)
+                                   (setf (car cons) (1- (truncate (length vertices) 3)))
+                                   (setf (gethash vertex vertex-index-mapping) (car cons))))))
+                 (setf (aref indices (+ 0 index-ptr)) (first vertex-indices))
+                 (setf (aref indices (+ 1 index-ptr)) (third vertex-indices))
+                 (setf (aref indices (+ 2 index-ptr)) (second vertex-indices))
                  (incf index-ptr 3))))
     (values (coerce vertices '(simple-array single-float (*)))
             indices)))
