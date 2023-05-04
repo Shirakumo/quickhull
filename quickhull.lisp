@@ -4,6 +4,16 @@
 
 (in-package #:org.shirakumo.fraf.quickhull)
 
+(declaim (inline dbg))
+#++
+(defun dbg (format &rest args)
+  (if (stringp format)
+      (format *debug-io* "~&~?~%" format args)
+      (apply #'dbg "~a" format args)))
+#-+
+(defun dbg (format &rest args)
+  (declare (ignore format args)))
+
 (defstruct (ray
             (:include vec3)
             (:constructor %ray (3d-vectors::%vx3 3d-vectors::%vy3 3d-vectors::%vz3
@@ -286,11 +296,6 @@
              (return NIL))
         finally (return T)))
 
-(defun dbg (format &rest args)
-  (if (stringp format)
-      (format *debug-io* "~&~?~%" format args)
-      (apply #'dbg "~a" format args)))
-
 (defun quickhull (vertices &key (eps 0.0001))
   ;; TODO: Avoid copying of vertices to points
   (let* ((points (vertices->points vertices))
@@ -439,7 +444,6 @@
                                        (dbg "Pushing face: ~a" face-index)
                                        (vector-push-extend face-index face-list)
                                        (setf (face-in-stack-p face) T))))))))))
-    (describe mesh-builder)
     (values mesh-builder points)))
 
 (defun extract-half-edge-mesh (mesh-builder points)
