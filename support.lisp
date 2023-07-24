@@ -46,6 +46,7 @@
   (%plane (vx normal) (vy normal) (vz normal)
           (etypecase distance
             (single-float distance)
+            (real (float distance 0f0))
             (vec3 (- (v. normal distance))))))
 
 (defun vraysqrdist (point ray)
@@ -91,7 +92,7 @@
   (plane (%plane 0.0 0.0 0.0 0.0) :type plane)
   (half-edge 0 :type (unsigned-byte 32))
   (farthest-point 0 :type (unsigned-byte 32))
-  (farthest-point-distance 0.0 :type single-float)
+  (farthest-point-distance 0.0d0 :type double-float)
   (checked-iteration 0 :type (unsigned-byte 32))
   (visible-p NIL :type boolean)
   (in-stack-p NIL :type boolean)
@@ -107,9 +108,16 @@
             (face-visible-p face) (face-in-stack-p face) (face-horizon-edges face) 
             (face-disabled-p face) (face-points-on-positive-side face))))
 
-(declaim (ftype (function (T) (simple-array single-float)) ensure-vertices))
+(declaim (ftype (function (T) simple-array) ensure-vertices))
 (defun ensure-vertices (vertices)
   (etypecase vertices
-    ((simple-array single-float) vertices)
+    ((simple-array single-float (*)) vertices)
+    ((simple-array double-float (*)) vertices)
     (sequence
-     (map-into (make-array (length vertices) :element-type 'single-float) #'float vertices))))
+     (etypecase (elt vertices 0)
+       (single-float
+        (map-into (make-array (length vertices) :element-type 'single-float)
+                  (lambda (x) (float x 0f0)) vertices))
+       (real
+        (map-into (make-array (length vertices) :element-type 'double-float)
+                  (lambda (x) (float x 0d0)) vertices))))))

@@ -50,7 +50,7 @@
   (cond ((< 0 (length (disabled-faces mesh-builder)))
          (let* ((idx (vector-pop (disabled-faces mesh-builder)))
                 (face (aref (faces mesh-builder) idx)))
-           (setf (face-farthest-point-distance face) 0.0)
+           (setf (face-farthest-point-distance face) 0d0)
            idx))
         (T
          (vector-push-extend (face) (faces mesh-builder))
@@ -68,7 +68,7 @@
     (when (and (< 0 dist) (< (* eps2 (vsqrlength (face-plane face))) (* dist dist)))
       (vector-push-extend vertex (face-points-on-positive-side face))
       (when (< (face-farthest-point-distance face) dist)
-        (setf (face-farthest-point-distance face) dist)
+        (setf (face-farthest-point-distance face) (float dist 0d0))
         (setf (face-farthest-point face) vertex))
       T)))
 
@@ -101,7 +101,7 @@
           do (setf half-edge (half-edge-next (aref (half-edges mesh-builder) half-edge))))))
 
 (defun compute-extrema (vertices)
-  (let ((extrema (make-array 6 :element-type 'single-float))
+  (let ((extrema (make-array 6 :element-type (array-element-type vertices)))
         (indices (make-array 6 :element-type '(unsigned-byte 32))))
     (loop for i from 0
           for j from 0 by 3 below (length vertices)
@@ -187,7 +187,7 @@
              (return NIL))
         finally (return T)))
 
-(defun quickhull (vertices &key (eps 0.0001))
+(defun quickhull (vertices &key (eps 0.0001d0))
   (let* ((vertices (ensure-vertices vertices))
          (extrema (compute-extrema vertices))
          (scale (compute-scale extrema vertices))
@@ -340,7 +340,7 @@
   (let ((face-mapping (make-hash-table :test 'eql))
         (half-edge-mapping (make-hash-table :test 'eql))
         (vertex-mapping (make-hash-table :test 'eql))
-        (vertices (make-array 0 :element-type 'single-float :adjustable T :fill-pointer T))
+        (vertices (make-array 0 :element-type (array-element-type in-vertices) :adjustable T :fill-pointer T))
         (faces (make-array 0 :element-type '(unsigned-byte 32) :adjustable T :fill-pointer T))
         (half-edges (make-array 0 :element-type 'half-edge :adjustable T :fill-pointer T)))
     (loop for face across (faces mesh-builder)
@@ -362,7 +362,7 @@
           do (unless (half-edge-disabled-p half-edge)
                (setf (gethash i half-edge-mapping) (length half-edges))
                (vector-push-extend half-edge half-edges)))
-    (values (map '(simple-array single-float (*)) #'identity vertices)
+    (values (make-array (length vertices) :element-type (array-element-type vertices) :initial-contents vertices)
             (map '(simple-array (unsigned-byte 32) (*))
                  (lambda (x) (gethash x half-edge-mapping))
                  faces)
@@ -386,7 +386,7 @@
   (let* ((vertex-index-mapping (make-hash-table :test 'eql))
          (faces (faces mesh-builder))
          (half-edges (half-edges mesh-builder))
-         (vertices (make-array 0 :element-type 'single-float :adjustable T :fill-pointer T))
+         (vertices (make-array 0 :element-type (array-element-type in-vertices) :adjustable T :fill-pointer T))
          (processed-faces (make-array (length faces) :element-type 'bit))
          (face-stack (list (loop for i from 0 below (length faces)
                                  unless (face-disabled-p (aref faces i))
@@ -424,7 +424,7 @@
                  (setf (aref indices (+ 1 index-ptr)) (third vertex-indices))
                  (setf (aref indices (+ 2 index-ptr)) (second vertex-indices))
                  (incf index-ptr 3))))
-    (values (coerce vertices '(simple-array single-float (*)))
+    (values (make-array (length vertices) :element-type (array-element-type vertices) :initial-contents vertices)
             indices)))
 
 (defun convex-hull (vertices &rest args)
