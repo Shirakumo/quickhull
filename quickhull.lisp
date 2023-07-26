@@ -102,15 +102,21 @@
 
 (defun compute-extrema (vertices)
   (let ((extrema (make-array 6 :element-type (array-element-type vertices)))
-        (indices (make-array 6 :element-type '(unsigned-byte 32))))
-    (loop for i from 0
-          for j from 0 by 3 below (length vertices)
-          do (cond ((< (aref extrema 0) (aref vertices (+ j 0))) (setf (aref extrema 0) (aref vertices (+ j 0))) (setf (aref indices 0) i))
-                   ((< (aref vertices (+ j 0)) (aref extrema 1)) (setf (aref extrema 1) (aref vertices (+ j 0))) (setf (aref indices 1) i)))
-             (cond ((< (aref extrema 2) (aref vertices (+ j 1))) (setf (aref extrema 2) (aref vertices (+ j 1))) (setf (aref indices 2) i))
-                   ((< (aref vertices (+ j 1)) (aref extrema 3)) (setf (aref extrema 3) (aref vertices (+ j 1))) (setf (aref indices 3) i)))
-             (cond ((< (aref extrema 4) (aref vertices (+ j 2))) (setf (aref extrema 4) (aref vertices (+ j 2))) (setf (aref indices 4) i))
-                   ((< (aref vertices (+ j 2)) (aref extrema 5)) (setf (aref extrema 5) (aref vertices (+ j 2))) (setf (aref indices 5) i))))
+        (indices (make-array 6 :element-type '(unsigned-byte 32) :initial-element 0)))
+    (setf (aref extrema 0) (setf (aref extrema 1) (aref vertices 0)))
+    (setf (aref extrema 2) (setf (aref extrema 3) (aref vertices 1)))
+    (setf (aref extrema 4) (setf (aref extrema 5) (aref vertices 2)))
+    (loop for i from 1
+          for j from 3 below (length vertices) by 3
+          do (loop for c from 0 below 3
+                   for ei = (* 2 c)
+                   for x = (aref vertices (+ j c))
+                   do (when (< (aref extrema (+ 0 ei)) x)
+                        (setf (aref extrema (+ 0 ei)) x)
+                        (setf (aref indices (+ 0 ei)) i))
+                      (when (< x (aref extrema (+ 1 ei)))
+                        (setf (aref extrema (+ 1 ei)) x)
+                        (setf (aref indices (+ 1 ei)) i))))
     indices))
 
 (defun compute-scale (extrema vertices)
@@ -187,7 +193,7 @@
              (return NIL))
         finally (return T)))
 
-(defun quickhull (vertices &key (eps 0.0001d0))
+(defun quickhull (vertices &key (eps 0.0001d0) max-vertex-count)
   (let* ((vertices (ensure-vertices vertices))
          (extrema (compute-extrema vertices))
          (scale (compute-scale extrema vertices))
