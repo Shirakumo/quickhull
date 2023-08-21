@@ -35,4 +35,11 @@ You may pass an optional EPS parameter (defaulting to 0.0001), which
 defines the minimal distance below which two vertices are considered
 the same and are merged together.
 
+You may pass an optional REDUCE-VERTICES parameter (defaulting to T),
+which if true causes the function to return a fresh array of vertices,
+only including those used in the convex hull. If NIL, the same vertex
+array that was passed in *may* be returned. A fresh array is
+nevertheless returned if the input vertices all lie in a single plane,
+thus requiring an extra vertex to form a hull with volume.
+
 See EDGE-SOLVER-FAILED"))

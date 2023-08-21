@@ -134,8 +134,8 @@
         ((3 4)
          (let ((plane (plane (triangle-normal vertices 0 1 2) (v vertices 0))))
            (if (above-plane-p vertices (min 3 num-vertices) plane)
-               (make-mesh-builder 1 0 2 (min 3 num-vertices))
-               (make-mesh-builder 0 1 2 (min 3 num-vertices)))))
+               (values (make-mesh-builder 1 0 2 (min 3 num-vertices)) vertices)
+               (values (make-mesh-builder 0 1 2 (min 3 num-vertices)) vertices))))
         (T
          (let (base-a base-b base-c base-d)
            (let ((max-dist eps2))
@@ -396,7 +396,7 @@
 (defun sbitp (array index)
   (= 1 (sbit array index)))
 
-(defun extract-convex-hull (mesh-builder in-vertices)
+(defun extract-convex-hull (mesh-builder in-vertices &key (reduce-vertices T))
   (dbg "============")
   (let* ((vertex-index-mapping (make-hash-table :test 'eql))
          (faces (faces mesh-builder))
@@ -428,20 +428,23 @@
                        for mapping = (gethash vertex vertex-index-mapping)
                        do (cond (mapping
                                  (setf (car cons) mapping))
-                                (T
+                                (reduce-vertices
                                  (let ((point (* 3 vertex)))
                                    (vector-push-extend (aref in-vertices (+ point 0)) vertices)
                                    (vector-push-extend (aref in-vertices (+ point 1)) vertices)
                                    (vector-push-extend (aref in-vertices (+ point 2)) vertices)
                                    (setf (car cons) (1- (truncate (length vertices) 3)))
-                                   (setf (gethash vertex vertex-index-mapping) (car cons))))))
+                                   (setf (gethash vertex vertex-index-mapping) (car cons))))
+                                (T)))
                  (setf (aref indices (+ 2 index-ptr)) (first vertex-indices))
                  (setf (aref indices (+ 1 index-ptr)) (third vertex-indices))
                  (setf (aref indices (+ 0 index-ptr)) (second vertex-indices))
                  (incf index-ptr 3))))
-    (values (make-array (length vertices) :element-type (array-element-type vertices) :initial-contents vertices)
+    (values (if reduce-vertices
+                (make-array (length vertices) :element-type (array-element-type vertices) :initial-contents vertices)
+                in-vertices)
             indices)))
 
-(defun convex-hull (vertices &rest args)
-  (multiple-value-bind (mesh-builder vertices) (apply #'quickhull vertices args)
-    (extract-convex-hull mesh-builder vertices)))
+(defun convex-hull (vertices &key (reduce-vertices T) (eps 0.0001d0))
+  (multiple-value-bind (mesh-builder vertices) (quickhull vertices :eps eps)
+    (extract-convex-hull mesh-builder vertices :reduce-vertices reduce-vertices)))
