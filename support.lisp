@@ -23,27 +23,25 @@
 
 (defstruct (ray
             (:include vec3)
-            (:constructor %ray (3d-vectors::%vx3 3d-vectors::%vy3 3d-vectors::%vz3
-                                direction)))
+            (:constructor %ray (varr3 direction)))
   (direction (vec 0 0 0) :type vec3))
 
 (defmethod print-object ((ray ray) stream)
   (print (list 'ray (vcopy ray) (ray-direction ray)) stream))
 
 (defun ray (position direction)
-  (%ray (vx position) (vy position) (vz position) direction))
+  (%ray (copy-seq (varr3 position)) direction))
 
 (defstruct (plane
             (:include vec3)
-            (:constructor %plane (3d-vectors::%vx3 3d-vectors::%vy3 3d-vectors::%vz3
-                                  distance)))
+            (:constructor %plane (varr3 distance)))
   (distance 0.0 :type single-float))
 
 (defmethod print-object ((plane plane) stream)
   (print (list 'plane (vcopy plane) (plane-distance plane)) stream))
 
 (defun plane (normal distance)
-  (%plane (vx normal) (vy normal) (vz normal)
+  (%plane (copy-seq (varr3 normal))
           (etypecase distance
             (single-float distance)
             (real (float distance 0f0))
@@ -89,7 +87,7 @@
 
 (defstruct (face
             (:constructor face))
-  (plane (%plane 0.0 0.0 0.0 0.0) :type plane)
+  (plane (%plane (make-array 3 :element-type 'single-float :initial-element 0f0) 0f0) :type plane)
   (half-edge 0 :type (unsigned-byte 32))
   (farthest-point 0 :type (unsigned-byte 32))
   (farthest-point-distance 0.0d0 :type double-float)

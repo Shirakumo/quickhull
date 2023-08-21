@@ -10,6 +10,7 @@
   :serial T
   :components ((:file "package")
                (:file "support")
-               (:file "quickhull"))
-  :depends-on (:3d-vectors
+               (:file "quickhull")
+               (:file "documentation"))
+  :depends-on (:3d-math
                :documentation-utils))

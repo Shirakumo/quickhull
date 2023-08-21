@@ -1,5 +1,5 @@
 (defpackage #:org.shirakumo.fraf.quickhull
-  (:use #:cl #:org.shirakumo.flare.vector)
+  (:use #:cl #:org.shirakumo.fraf.math.vectors)
   (:export
    #:edge-solver-failed
    #:convex-hull))
