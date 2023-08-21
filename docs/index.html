@@ -1,0 +1,54 @@
+<!DOCTYPE html> <html lang="EN"> <head> <meta charset="utf-8"> <title>Quickhull</title> <style>html body{margin:0 auto 0 auto;padding:20px;max-width:1024px;font-family:sans-serif;font-size:14pt;overflow-y:scroll;}html body a{text-decoration:none;}html body a[href]{color:#0055AA;}html body a[href]:hover{color:#0088EE;}html body pre{background:#FAFAFA;border:1px solid #DDDDDD;padding:0.75em;overflow-x:auto;}html body pre >code a[href]{color:#223388;}article.project h1{font-size:1.7em;}article.project h1,article.project h2,article.project h3,article.project h4,article.project h5,article.project h6{margin:0.2em 0 0.1em 0;text-indent:1em;}article.project >header{text-align:center;}article.project >header img.logo{display:block;margin:auto;max-height:170px;}article.project >header h1{display:inline-block;text-indent:0;font-size:2.5em;}article.project >header .version{vertical-align:bottom;}article.project >header .languages{margin-top:-0.5em;text-transform:capitalize;}article.project >header .description{margin:0;}article.project >header .pages{margin-top:0.5em;font-size:1.2em;text-transform:capitalize;}article.project >header .pages a{display:inline-block;padding:0 0.2em;}article.project >section{margin:1em 0 1em 0;}article.project #index >ul{list-style:none;margin:0;padding:0;}article.project .row label{display:inline-block;min-width:8em;}article.project #system .row{display:flex;}article.project #system #dependencies{display:inline;margin:0;padding:0;}article.project #system #dependencies li{display:inline;padding:0 0.2em;}article.project #system #author label{vertical-align:top;}article.project #system #author ul{display:inline-block;margin:0;padding:0;list-style:none;}article.definition{margin:1em 0 0 0;}article.definition >header h1,article.definition >header h2,article.definition >header h3,article.definition >header h4,article.definition >header h5,article.definition >header h6{text-indent:0;display:inline-block;}article.definition >header ul{display:inline-block;list-style:none;margin:0;padding:0;}article.definition >header ul li{display:inline-block;padding:0 0.2em 0 0;}article.definition >header .visibility{display:none;}article.definition >header .visibility,article.definition >header .type{text-transform:lowercase;}article.definition >header .source-link{visibility:hidden;float:right;}article.definition >header .source-link:after{visibility:visible;content:"[SRC]";}article.definition .docstring{margin:0 0 0 1em;}article.definition .docstring pre{font-size:0.8em;white-space:pre-wrap;}.definition.package >header ul.nicknames{display:inline-block;list-style:none;margin:0;padding:0 0 0 1em;}.definition.package >header ul.nicknames li{display:inline;}.definition.package >header ul.nicknames:before{content:"(";}.definition.package >header ul.nicknames:after{content:")";}.definition.package ul.definitions{margin:0;list-style:none;padding:0 0 0 0.5em;}.definition.callable >header .name:before,.definition.type >header .name:before{content:"(";font-weight:normal;}.definition.callable >header .arguments:after,.definition.type >header .arguments:after{content:")";}.definition.callable >header .arguments .arguments:before,.definition.type >header .arguments .arguments:before{content:"(";}.definition.callable >header .arguments .argument,.definition.type >header .arguments .argument{padding:0;}.definition.callable >header .arguments .argument.lambda-list-keyword,.definition.type >header .arguments .argument.lambda-list-keyword{color:#991155;}.definition li>mark{background:none;border-left:0.3em solid #0088EE;padding-left:0.3em;display:block;}</style> </head> <body> <article class="project"> <header>   <h1>quickhull</h1>   <span class="version">1.0.0</span>    <p class="description">An implementation of the Quickhull convex hull construction algorithm</p>   </header> <section id="documentation"><article><h1 id="about quickhull">About Quickhull</h1><p>This is an implementation of the Quickhull algorithm by Barber, Dobkin, and Huhdanpaa<sup class="footnote-reference"><a href="#footnote-1">[1]</a></sup> for constructing a convex hull of a 3D mesh, based on the implementation by Antti Kuukka<sup class="footnote-reference"><a href="#footnote-2">[2]</a></sup>.</p><h2 id="how to">How To</h2><p>Load the library and run <code><a href="#FUNCTION%20ORG.SHIRAKUMO.FRAF.QUICKHULL%3ACONVEX-HULL" class="xref">org.shirakumo.fraf.quickhull:convex-hull</a></code> with an array of packed vertices. It'll return a similarly packed array of vertices on the convex hull, along with an array of face indices that describe the surface of the hull. That's it.</p><footer class="footnotes"><hr><ol><li value="1" id="footnote-1"><a href="https://dpd.cs.princeton.edu/Papers/BarberDobkinHuhdanpaa.pdf">https://dpd.cs.princeton.edu/Papers/BarberDobkinHuhdanpaa.pdf</a></li><li value="2" id="footnote-2"><a href="https://github.com/akuukka/quickhull">https://github.com/akuukka/quickhull</a></li></ol></footer></article></section>   <section id="system"> <h2>System Information</h2>  <div class="row"> <label for="version">Version:</label> <a id="version">1.0.0</a> </div>   <div class="row"> <label for="dependencies">Dependencies:</label> <ul id="dependencies"><li><a class="external" href="https://Shinmera.github.io/3d-vectors/">3d-vectors</a></li><li><a class="external" href="https://Shinmera.github.io/documentation-utils/">documentation-utils</a></li></ul> </div>   <div class="row" id="author"> <label for="author">Author:</label> <a href="mailto:shinmera@tymoon.eu">Yukari Hafner</a> </div>   <div class="row"> <label for="license">License:</label> <a id="license" href="https://github.com/shirakumo/quickhull/blob/3c15adc01e29c14ba9139a22253ab3b017df7693/LICENSE">zlib</a> </div>   <div class="row"> <label for="homepage">Homepage:</label> <a id="homepage" href="https://shirakumo.github.io/quickhull/">https://shirakumo.github.io/quickhull/</a> </div>   <div class="row"> <label for="bug-tracker">Bug Tracker:</label> <a id="bug-tracker" href="https://github.com/shirakumo/quickhull/issues">https://github.com/shirakumo/quickhull/issues</a> </div>   <div class="row"> <label for="sources">Sources:</label> <a id="sources" href="https://github.com/shirakumo/quickhull.git">https://github.com/shirakumo/quickhull.git</a> </div>  </section>    <section id="index"> <h2>Definition Index</h2> <ul> <li> <article class="definition package" id="PACKAGE ORG.SHIRAKUMO.FRAF.QUICKHULL"> <header> <h3> <a href="#PACKAGE%20ORG.SHIRAKUMO.FRAF.QUICKHULL">ORG.SHIRAKUMO.FRAF.QUICKHULL</a> </h3> <ul class="nicknames"></ul>  </header> <div class="docstring"><i>No documentation provided.</i></div> <ul class="definitions"> <li> <article class="definition condition" id="CONDITION ORG.SHIRAKUMO.FRAF.QUICKHULL:EDGE-SOLVER-FAILED"> <header> <span class="visibility">EXTERNAL</span> <span class="type">CONDITION</span> <h4 class="name"> <a href="#CONDITION%20ORG.SHIRAKUMO.FRAF.QUICKHULL%3AEDGE-SOLVER-FAILED">EDGE-SOLVER-FAILED</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments"></ul>  <a class="source-link" href="https://github.com/shirakumo/quickhull/blob/3c15adc01e29c14ba9139a22253ab3b017df7693/support.lisp#L3">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li>  <li> <article class="definition function callable" id="FUNCTION ORG.SHIRAKUMO.FRAF.QUICKHULL:CONVEX-HULL"> <header> <span class="visibility">EXTERNAL</span> <span class="type">FUNCTION</span> <h4 class="name"> <a href="#FUNCTION%20ORG.SHIRAKUMO.FRAF.QUICKHULL%3ACONVEX-HULL">CONVEX-HULL</a> </h4> <ul class="qualifiers"></ul> <ul class="arguments">  <li class="argument">VERTICES</li>    <li class="argument lambda-list-keyword">&amp;REST</li>    <li class="argument">ARGS</li>  </ul>  <a class="source-link" href="https://github.com/shirakumo/quickhull/blob/3c15adc01e29c14ba9139a22253ab3b017df7693/quickhull.lisp#L445">Source</a>  </header> <div class="docstring"><i>No documentation provided.</i></div> </article> </li> </ul> </article> </li> </ul> </section>  </article> <script>window.addEventListener("DOMContentLoaded", function(){
+    var unmarkElement = function(el){
+        if(el.tagName === "mark" || el.tagName === "MARK"){
+            [].forEach.call(el.childNodes, function(child){
+                el.parentNode.insertBefore(child, el);
+            });
+            el.parentNode.removeChild(el);
+        }else if(el.parentNode.tagName === "mark"){
+            return unmarkElement(el.parentNode);
+        }
+        return null;
+    }
+
+    var unmarkAll = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("mark"), unmarkElement);
+    }
+    
+    var markElement = function(el){
+        if(el.parentNode.tagName === "mark" || el.parentNode.tagName === "MARK"){
+            return el.parentNode;
+        } else {
+            unmarkAll();
+            var marked = document.createElement("mark");
+            el.parentNode.insertBefore(marked, el);
+            marked.appendChild(el);
+            return marked;
+        }
+    }
+
+    var markFragmented = function(){
+        if(window.location.hash){
+            var el = document.getElementById(decodeURIComponent(window.location.hash.substr(1)));
+            if(el) markElement(el);
+        }
+    }
+
+    var registerXrefLink = function(link){
+        var el = document.getElementById(decodeURIComponent(link.getAttribute("href").substr(1)));
+        if(el){
+            link.addEventListener("click", function(){
+                markElement(el);
+            });
+        }
+    }
+
+    var registerXrefLinks = function(root){
+        root = root || document;
+        [].forEach.call(root.querySelectorAll("a.xref"), registerXrefLink);
+    }
+
+    markFragmented();
+    registerXrefLinks();
+}); </script> </body> </html> 
