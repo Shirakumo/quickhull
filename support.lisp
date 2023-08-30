@@ -65,6 +65,18 @@
         (c (vec (aref vertices (+ (* 3 c) 0)) (aref vertices (+ (* 3 c) 1)) (aref vertices (+ (* 3 c) 2)))))
     (vc (v- a c) (v- b c))))
 
+(defun triangle-centroid (vertices a b c)
+  (nv* (vec (+ (aref vertices (+ 0 (* 3 a)))
+               (aref vertices (+ 0 (* 3 b)))
+               (aref vertices (+ 0 (* 3 c))))
+            (+ (aref vertices (+ 1 (* 3 a)))
+               (aref vertices (+ 1 (* 3 b)))
+               (aref vertices (+ 1 (* 3 c))))
+            (+ (aref vertices (+ 2 (* 3 a)))
+               (aref vertices (+ 2 (* 3 b)))
+               (aref vertices (+ 2 (* 3 c)))))
+       1/3))
+
 (defun above-plane-p (vertices vertex plane)
   (< 0 (plane-sigdist vertices vertex plane)))
 

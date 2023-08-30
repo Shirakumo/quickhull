@@ -168,8 +168,9 @@
              (unless base-d
                ;; 2D case. Inject an extra point to give the mesh volume.
                (warn "Mesh has no volume. All points are part of a 2-dimensional plane.")
-               (let ((normal (nv+ (triangle-normal vertices base-b base-c base-a)
-                                  (v vertices 0)))
+               (let ((normal (nv+* (triangle-centroid vertices base-a base-b base-c)
+                                   (triangle-normal vertices base-b base-c base-a)
+                                   (sqrt eps2)))
                      (new (make-array (+ 3 (length vertices)) :element-type (array-element-type vertices))))
                  (setf base-d num-vertices)
                  (replace new vertices)
