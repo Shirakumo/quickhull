@@ -133,9 +133,9 @@
          (error "Mesh has no volume. Not enough points to form a triangle."))
         ((3 4)
          (let ((plane (plane (triangle-normal vertices 0 1 2) (v vertices 0))))
-           (if (above-plane-p vertices (min 3 num-vertices) plane)
-               (values (make-mesh-builder 1 0 2 (min 3 num-vertices)) vertices)
-               (values (make-mesh-builder 0 1 2 (min 3 num-vertices)) vertices))))
+           (if (above-plane-p vertices (min 3 (1- num-vertices)) plane)
+               (values (make-mesh-builder 1 0 2 (min 3 (1- num-vertices))) vertices)
+               (values (make-mesh-builder 0 1 2 (min 3 (1- num-vertices))) vertices))))
         (T
          (let (base-a base-b base-c base-d)
            (let ((max-dist eps2))

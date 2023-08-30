@@ -65,8 +65,8 @@
         (c (vec (aref vertices (+ (* 3 c) 0)) (aref vertices (+ (* 3 c) 1)) (aref vertices (+ (* 3 c) 2)))))
     (vc (v- a c) (v- b c))))
 
-(defun above-plane-p (vertices i plane)
-  (< 0 (plane-sigdist vertices i plane)))
+(defun above-plane-p (vertices vertex plane)
+  (< 0 (plane-sigdist vertices vertex plane)))
 
 (defstruct (half-edge
             (:constructor half-edge (&optional end opp face next)))
