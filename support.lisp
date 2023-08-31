@@ -77,6 +77,9 @@
                (aref vertices (+ 2 (* 3 c)))))
        1/3))
 
+(defun height-above-plane (vertices i plane)
+  (plane-sigdist vertices i plane))
+
 (defun above-plane-p (vertices vertex plane)
   (< 0 (plane-sigdist vertices vertex plane)))
 
