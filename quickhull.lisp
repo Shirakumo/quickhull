@@ -175,9 +175,9 @@
              (unless base-d
                ;; 2D case. Inject an extra point to give the mesh volume.
                (warn "Mesh has no volume. All points are part of a 2-dimensional plane.")
-               (let* ((center (triangle-centroid vertices base-a base-b base-c))
+               (let* ((centroid (triangle-centroid vertices base-a base-b base-c))
                       (normal (triangle-normal vertices base-b base-c base-a))
-                      (new-vertex (nv+* (v vertices 0) normal (sqrt eps2) #+maybe (/ 1 (vlength normal))))
+                      (new-vertex (nv+* centroid normal (sqrt eps2) #+maybe (/ .001 (vlength normal))))
                       (new (make-array (+ 3 (length vertices)) :element-type (array-element-type vertices))))
                  (setf base-d num-vertices)
                  (replace new vertices)
@@ -185,10 +185,12 @@
                  (setf (aref new (+ 1 (* 3 base-d))) (float (vy new-vertex) (aref new 0)))
                  (setf (aref new (+ 2 (* 3 base-d))) (float (vz new-vertex) (aref new 0)))
                  (setf vertices new)
-                 (format *trace-output* "; Added vertex at ~A ~A ~A~%"
-                         (aref new (+ 0 base-d))
-                         (aref new (+ 1 base-d))
-                         (aref new (+ 2 base-d)))))
+                 ; (break "~A" new)
+                 (format *trace-output* "; Added vertex at ~A~&~2@T+ ~A~&~2@T= ~A~&~2@Tvertices ~A"
+                         centroid (v* normal (/ 0.1 (vlength normal))) new-vertex
+                         nil #+no (list (dvec (aref vertices (+ 0 base-a)) (aref vertices (+ 1 base-a)) (aref vertices (+ 2 base-a)))
+                               (dvec (aref vertices (+ 0 base-b)) (aref vertices (+ 1 base-b)) (aref vertices (+ 2 base-b)))
+                               (dvec (aref vertices (+ 0 base-c)) (aref vertices (+ 1 base-c)) (aref vertices (+ 2 base-c)))))))
              (let ((mesh-builder (if (above-plane-p vertices base-d plane)
                                      (make-mesh-builder base-b base-a base-c base-d)
                                      (make-mesh-builder base-a base-b base-c base-d))))
