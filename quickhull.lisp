@@ -158,10 +158,12 @@
                         (setf base-c i)))
              (unless base-c
                (error "Mesh has no volume. All points are part of a 1-dimensional line.")))
-           (let ((max-dist eps2)
-                 (plane (plane (triangle-normal vertices base-a base-b base-c) (v vertices base-a))))
+           (let* ((plane (plane (triangle-normal vertices base-a base-b base-c) (v vertices base-a)))
+                  (max-dist (* eps2 (vsqrlength plane)
+                               )))
              (loop for i from 0 below num-vertices
-                   for dist = (plane-sigdist vertices i plane)
+                   for dist* = (plane-sigdist vertices i plane)
+                   for dist = (* dist* dist*)
                    do (when (< max-dist dist)
                         (setf max-dist dist)
                         (setf base-d i)))
