@@ -101,7 +101,9 @@
           do (setf half-edge (half-edge-next (aref (half-edges mesh-builder) half-edge))))))
 
 (defun compute-extrema (vertices)
-  (let ((extrema (make-array 6 :element-type (array-element-type vertices)))
+  (let (;; #(max-x min-x max-y min-y max-z min-z)
+        (extrema (make-array 6 :element-type (array-element-type vertices)))
+        ;; #(vertex-index-max-x v-i-min-x v-i-max-y v-i-min-y v-i-max-z v-i-min-z)
         (indices (make-array 6 :element-type '(unsigned-byte 32) :initial-element 0)))
     (setf (aref extrema 0) (setf (aref extrema 1) (aref vertices 0)))
     (setf (aref extrema 2) (setf (aref extrema 3) (aref vertices 1)))
@@ -125,6 +127,9 @@
         maximize (abs (aref vertices (+ v (truncate i 2))))))
 
 (defun compute-initial-mesh (vertices extrema eps2)
+  ;; Note: EXTREMA is the vector that is called INDICES in
+  ;; COMPUTE-EXTREMA, that is, the indices of the vertices with
+  ;; {min,max}x{x,y,z} components.
   (flet ((make-mesh-builder (a b c d)
            (make-instance 'mesh-builder :a a :b b :c c :d d)))
     (let ((num-vertices (truncate (length vertices) 3)))

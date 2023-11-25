@@ -2,7 +2,7 @@
 
 (define-condition edge-solver-failed (warning)
   ()
-  (:report (lambda (c s) (format s "Failed to construct edge loop. Convex hull may not be ideal."))))
+  (:report "Failed to construct edge loop. Convex hull may not be ideal."))
 
 (declaim (inline dbg))
 #++
@@ -60,9 +60,9 @@
      (plane-distance plane)))
 
 (defun triangle-normal (vertices a b c)
-  (let ((a (vec (aref vertices (+ (* 3 a) 0)) (aref vertices (+ (* 3 a) 1)) (aref vertices (+ (* 3 a) 2))))
-        (b (vec (aref vertices (+ (* 3 b) 0)) (aref vertices (+ (* 3 b) 1)) (aref vertices (+ (* 3 b) 2))))
-        (c (vec (aref vertices (+ (* 3 c) 0)) (aref vertices (+ (* 3 c) 1)) (aref vertices (+ (* 3 c) 2)))))
+  (let ((a (v vertices a))
+        (b (v vertices b))
+        (c (v vertices c)))
     (vc (v- a c) (v- b c))))
 
 (defun triangle-centroid (vertices a b c)
@@ -114,8 +114,8 @@
   (let ((plane (face-plane face)))
     (format stream "#{plane: P(~a,~a,~a,~a) he: ~d most-distant: ~a visible: ~a in-stack: ~a horizon: ~a disabled: ~a points: ~a}"
             (vx plane) (vy plane) (vz plane) (plane-distance plane)
-            (face-half-edge face) (face-farthest-point face) 
-            (face-visible-p face) (face-in-stack-p face) (face-horizon-edges face) 
+            (face-half-edge face) (face-farthest-point face)
+            (face-visible-p face) (face-in-stack-p face) (face-horizon-edges face)
             (face-disabled-p face) (face-points-on-positive-side face))))
 
 (declaim (ftype (function (T) simple-array) ensure-vertices))
