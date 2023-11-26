@@ -135,7 +135,7 @@
     (let ((num-vertices (truncate (length vertices) 3)))
       (case num-vertices
         ((0 1 2)
-         (error "Mesh has no volume. Not enough points to form a triangle."))
+         (error 'too-few-points-error))
         ((3 4)
          (let ((plane (plane (triangle-normal vertices 0 1 2) (v vertices 0))))
            (if (above-plane-p vertices (min 3 (1- num-vertices)) plane)
@@ -152,7 +152,7 @@
                                  (setf base-a (aref extrema i))
                                  (setf base-b (aref extrema j)))))
              (unless base-a
-               (error "Mesh has no volume. All points are the same.")))
+               (error 'points-not-distinct-error)))
            (let ((max-dist eps2)
                  (ray (ray (v vertices base-a) (v- (v vertices base-b) (v vertices base-a)))))
              (loop for i from 0 below num-vertices
@@ -162,7 +162,7 @@
                         (setf max-dist dist)
                         (setf base-c i)))
              (unless base-c
-               (error "Mesh has no volume. All points are part of a 1-dimensional line.")))
+               (error 'points-colinear-error)))
            (let ((max-dist eps2)
                  (plane (plane (triangle-normal vertices base-a base-b base-c) (v vertices base-a))))
              (loop for i from 0 below num-vertices
@@ -172,7 +172,7 @@
                         (setf base-d i)))
              (unless base-d
                ;; 2D case. Inject an extra point to give the mesh volume.
-               (warn "Mesh has no volume. All points are part of a 2-dimensional plane.")
+               (error 'points-in-plane-error)
                (let ((normal (nv+* (triangle-centroid vertices base-a base-b base-c)
                                    (triangle-normal vertices base-b base-c base-a)
                                    (sqrt eps2)))

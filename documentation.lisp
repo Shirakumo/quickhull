@@ -1,11 +1,27 @@
 (in-package #:org.shirakumo.fraf.quickhull)
 
 (docs:define-docs
+  (type too-few-points-error
+    "Error signaled when point cloud consists of too few (one or two)
+points.")
+
+  (type points-not-distinct-error
+    "Error signaled when the point cloud consists only of identical
+points.")
+
+  (type points-colinear-error
+    "Error signaled when all points in the point cloud lie on a
+1-dimensional line.")
+
+  (type points-in-plane-error
+    "Error signaled when all points in the point cloud lie on a
+2-dimensional plane.")
+
   (type edge-solver-failed
     "Warning signalled when the solver fails due to imprecision.
 
 See CONVEX-HULL")
-  
+
   (function convex-hull
     "Extract a convex hull mesh from the given set of vertices.
 
@@ -14,9 +30,11 @@ to extract a convex hull from. Each vertex should come in the form of
 consecutive X, Y, and Z coordinates. It is preferred that VERTICES be
 a (SIMPLE-ARRAY SINGLE-FLOAT (*)) or (SIMPLE-ARRAY DOUBLE-FLOAT (*)).
 
-If VERTICES only contains 2 or fewer vertices, an error is signalled.
-If VERTICES describes a point cloud that doesn't have any volume, an
-error is also signalled.
+If VERTICES only contains 2 or fewer vertices, an error of type
+TOO-FEW-POINTS-ERROR is signalled. If VERTICES describes a point cloud
+that doesn't have any volume, an error of type
+POINTS-NOT-DISTINCT-ERROR, POINTS-COLINEAR-ERROR or
+POINTS-IN-PLANE-ERROR is signalled.
 
 Returns two values:
   1. A simple array of vertices that lie on the convex hull, in the
@@ -42,4 +60,8 @@ array that was passed in *may* be returned. A fresh array is
 nevertheless returned if the input vertices all lie in a single plane,
 thus requiring an extra vertex to form a hull with volume.
 
+See TOO-FEW-POINTS-ERROR
+See POINTS-NOT-DISTINCT-ERROR
+See POINTS-COLINEAR-ERROR
+See POINTS-IN-PLANE-ERROR
 See EDGE-SOLVER-FAILED"))

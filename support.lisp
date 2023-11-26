@@ -4,6 +4,29 @@
   ()
   (:report "Failed to construct edge loop. Convex hull may not be ideal."))
 
+(define-condition unsuitable-vertex-data (error)
+  ())
+
+(define-condition too-few-points-error (unsuitable-vertex-data)
+  ()
+  (:report
+   "Point cloud has no volume. Not enough points to form a triangle."))
+
+(define-condition points-not-distinct-error (unsuitable-vertex-data)
+  ()
+  (:report
+   "Point cloud has no volume. All points are the same (modulo tolerance)."))
+
+(define-condition points-colinear-error (unsuitable-vertex-data)
+  ()
+  (:report
+   "Point cloud has no volume. All points are part of a 1-dimensional line (modulo tolerance)."))
+
+(define-condition points-in-plane-error (unsuitable-vertex-data)
+  ()
+  (:report
+   "Point cloud has no volume. All points lie in a 2-dimensional plane (modulo tolerance)."))
+
 (declaim (inline dbg))
 #++
 (defun dbg (format &rest args)
