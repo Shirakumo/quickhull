@@ -121,6 +121,57 @@
                         (setf (aref indices (+ 1 ei)) i))))
     indices))
 
+(defun compute-base (vertices extrema eps2)
+  ;; Note: EXTREMA is the vector that is called INDICES in
+  ;; COMPUTE-EXTREMA, that is, the indices of the vertices with
+  ;; {min,max}x{x,y,z} components.
+  (let ((vertex-count (truncate (length vertices) 3))
+        base-ai base-bi base-ci base-di ; vertex indices
+        base-a base-b base-c)
+    ;; Try to find the two points that are furthest apart along some
+    ;; axis.
+    (loop with max-dist = eps2
+          for i from 0 below (length extrema)
+          do (loop for j from (1+ i) below (length extrema)
+                   for vi1 = (aref extrema i) ; vertex index
+                   for v1 = (v vertices vi1)
+                   for vi2 = (aref extrema j)
+                   for v2 = (v vertices vi2)
+                   for dist = (vsqrdistance v1 v2)
+                   when (< max-dist dist)
+                   do (setf max-dist dist)
+                      (setf base-ai vi1)
+                      (setf base-a v1)
+                      (setf base-bi vi2)
+                      (setf base-b v2)))
+    (unless base-ai
+      (error 'points-not-distinct-error))
+    ;; If we could find two base points, try to find a third that
+    ;; maximizes the distance to a ray through the first two points.
+    (loop with ray = (ray base-a (v- base-b base-a))
+          with max-dist = eps2
+          for i from 0 below vertex-count
+          unless (or (= i base-ai) (= i base-bi))
+          do (let* ((point (v vertices i))
+                    (dist (vraysqrdist point ray)))
+               (when (< max-dist dist)
+                 (setf max-dist dist)
+                 (setf base-ci i)
+                 (setf base-c point))))
+    (unless base-ci
+      (error 'points-colinear-error))
+    ;; Find a fourth point
+    (let ((plane (plane (vc (v- base-a base-c) (v- base-b base-c)) base-a)))
+      (loop with max-dist = (* eps2 (vsqrlength plane))
+            for i from 0 below vertex-count
+            unless (or (= i base-ai) (= i base-bi) (= i base-ci))
+              do (let* ((dist* (plane-sigdist vertices i plane))
+                        (dist (* dist* dist*)))
+                   (when (< max-dist dist)
+                     (setf max-dist dist)
+                     (setf base-di i))))
+      (values base-ai base-bi base-ci base-di plane))))
+
 (defun compute-scale (extrema vertices)
   (loop for i from 0 below (length extrema)
         for v = (* 3 (aref extrema i))
@@ -136,63 +187,35 @@
       (case num-vertices
         ((0 1 2)
          (error 'too-few-points-error))
-        ((3 4)
-         (let ((plane (plane (triangle-normal vertices 0 1 2) (v vertices 0))))
-           (if (above-plane-p vertices (min 3 (1- num-vertices)) plane)
-               (values (make-mesh-builder 1 0 2 (min 3 (1- num-vertices))) vertices)
-               (values (make-mesh-builder 0 1 2 (min 3 (1- num-vertices))) vertices))))
         (T
-         (let (base-a base-b base-c base-d)
-           (let ((max-dist eps2))
-             (loop for i from 0 below (length extrema)
-                   do (loop for j from (1+ i) below (length extrema)
-                            for dist = (vsqrdistance (v vertices (aref extrema i)) (v vertices (aref extrema j)))
-                            do (when (< max-dist dist)
-                                 (setf max-dist dist)
-                                 (setf base-a (aref extrema i))
-                                 (setf base-b (aref extrema j)))))
-             (unless base-a
-               (error 'points-not-distinct-error)))
-           (let ((max-dist eps2)
-                 (ray (ray (v vertices base-a) (v- (v vertices base-b) (v vertices base-a)))))
-             (loop for i from 0 below num-vertices
-                   for point = (v vertices i)
-                   for dist = (vraysqrdist point ray)
-                   do (when (< max-dist dist)
-                        (setf max-dist dist)
-                        (setf base-c i)))
-             (unless base-c
-               (error 'points-colinear-error)))
-           (let ((max-dist eps2)
-                 (plane (plane (triangle-normal vertices base-a base-b base-c) (v vertices base-a))))
-             (loop for i from 0 below num-vertices
-                   for dist = (plane-sigdist vertices i plane)
-                   do (when (< max-dist dist)
-                        (setf max-dist dist)
-                        (setf base-d i)))
-             (unless base-d
-               ;; 2D case. Inject an extra point to give the mesh volume.
-               (error 'points-in-plane-error)
-               (let ((normal (nv+* (triangle-centroid vertices base-a base-b base-c)
-                                   (triangle-normal vertices base-b base-c base-a)
-                                   (sqrt eps2)))
-                     (new (make-array (+ 3 (length vertices)) :element-type (array-element-type vertices))))
-                 (setf base-d num-vertices)
-                 (replace new vertices)
-                 (setf (aref new (+ 0 (* 3 base-d))) (float (vx normal) (aref new 0)))
-                 (setf (aref new (+ 1 (* 3 base-d))) (float (vy normal) (aref new 0)))
-                 (setf (aref new (+ 2 (* 3 base-d))) (float (vz normal) (aref new 0)))
-                 (setf vertices new)))
-             (let ((mesh-builder (if (above-plane-p vertices base-d plane)
-                                     (make-mesh-builder base-b base-a base-c base-d)
-                                     (make-mesh-builder base-a base-b base-c base-d))))
+         ;; For three points, BASE-D will be missing. That case will
+         ;; be handled just like a fourth point that lies in the plane
+         ;; of the first three points. That is, an error will be
+         ;; signaled or the point cloud will be extruded in a suitable
+         ;; direction.
+         (multiple-value-bind (base-a base-b base-c base-d plane)
+             (compute-base vertices extrema eps2)
+           (unless base-d ; extrude by adding new fourth base point
+             (let* ((centroid (triangle-centroid vertices base-a base-b base-c))
+                    (normal (triangle-normal vertices base-b base-c base-a))
+                    (new-vertex (nv+* centroid normal (sqrt (/ eps2 (vsqrlength normal))) #+maybe (/ .001 (vlength normal))))
+                    (new (make-array (+ 3 (length vertices)) :element-type (array-element-type vertices))))
+               (setf base-d num-vertices)
+               (replace new vertices)
+               (setf (aref new (+ 0 (* 3 base-d))) (float (vx new-vertex) (aref new 0)))
+               (setf (aref new (+ 1 (* 3 base-d))) (float (vy new-vertex) (aref new 0)))
+               (setf (aref new (+ 2 (* 3 base-d))) (float (vz new-vertex) (aref new 0)))
+               (setf vertices new)))
+           (let ((mesh-builder (if (above-plane-p vertices base-d plane)
+                                   (make-mesh-builder base-b base-a base-c base-d)
+                                   (make-mesh-builder base-a base-b base-c base-d))))
+             (loop for face across (faces mesh-builder)
+                   for (a b c) = (face-vertices mesh-builder face)
+                   for normal = (triangle-normal vertices a b c)
+                   do (setf (face-plane face) (plane normal (v vertices a))))
+             (dotimes (i num-vertices (values mesh-builder vertices))
                (loop for face across (faces mesh-builder)
-                     for (a b c) = (face-vertices mesh-builder face)
-                     for normal = (triangle-normal vertices a b c)
-                     do (setf (face-plane face) (plane normal (v vertices a))))
-               (dotimes (i num-vertices (values mesh-builder vertices))
-                 (loop for face across (faces mesh-builder)
-                       until (add-point face vertices i eps2)))))))))))
+                     until (add-point face vertices i eps2))))))))))
 
 (defun reorder-horizon-edges (horizon-edges half-edges)
   (loop for i from 0 below (1- (length horizon-edges))
