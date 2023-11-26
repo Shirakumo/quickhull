@@ -15,7 +15,8 @@ points.")
 
   (type points-in-plane-error
     "Error signaled when all points in the point cloud lie on a
-2-dimensional plane.")
+2-dimensional plane and the caller has requested to not extrude the
+point cloud..")
 
   (type edge-solver-failed
     "Warning signalled when the solver fails due to imprecision.
@@ -34,7 +35,8 @@ If VERTICES only contains 2 or fewer vertices, an error of type
 TOO-FEW-POINTS-ERROR is signalled. If VERTICES describes a point cloud
 that doesn't have any volume, an error of type
 POINTS-NOT-DISTINCT-ERROR, POINTS-COLINEAR-ERROR or
-POINTS-IN-PLANE-ERROR is signalled.
+POINTS-IN-PLANE-ERROR is signalled. Signaling of latter error depends
+on the EXTRUDE-IF-FLAT parameter (see below).
 
 Returns two values:
   1. A simple array of vertices that lie on the convex hull, in the
@@ -59,6 +61,12 @@ only including those used in the convex hull. If NIL, the same vertex
 array that was passed in *may* be returned. A fresh array is
 nevertheless returned if the input vertices all lie in a single plane,
 thus requiring an extra vertex to form a hull with volume.
+
+You may pass an optional EXTRUDE-IF-FLAT parameter (defaulting to T),
+which controls whether a flat point cloud (all points lie in a
+2-dimensional plane) is extruded by adding a point to form a proper
+volume. If this parameter is NIL and VERTICES describe a flat point
+cloud, an error of type POINTS-IN-PLANE-ERROR is signaled.
 
 See TOO-FEW-POINTS-ERROR
 See POINTS-NOT-DISTINCT-ERROR
