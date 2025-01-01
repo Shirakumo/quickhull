@@ -160,8 +160,12 @@
                  (setf base-c point))))
     (unless base-ci
       (error 'points-colinear-error))
-    ;; Find a fourth point
     (let ((plane (plane (vc (v- base-a base-c) (v- base-b base-c)) base-a)))
+      ;; Try to find a fourth point that is furthest from the plane
+      ;; spanned by the first three points and also more than a
+      ;; minimum distance remove from the plane. If such a fourth
+      ;; point cannot be found, we consider the vertices to lie in a
+      ;; plane (modulo the specified tolerance).
       (loop with max-dist = (* eps2 (vsqrlength plane))
             for i from 0 below vertex-count
             unless (or (= i base-ai) (= i base-bi) (= i base-ci))
