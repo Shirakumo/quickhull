@@ -477,14 +477,21 @@
                                    (setf (car cons) (1- (truncate (length vertices) 3)))
                                    (setf (gethash vertex vertex-index-mapping) (car cons))))
                                 (T)))
-                 (setf (aref indices (+ 2 index-ptr)) (first vertex-indices))
-                 (setf (aref indices (+ 1 index-ptr)) (third vertex-indices))
-                 (setf (aref indices (+ 0 index-ptr)) (second vertex-indices))
-                 (incf index-ptr 3))))
+                 (cond ((and (/= (first vertex-indices) (second vertex-indices))
+                             (/= (first vertex-indices) (third vertex-indices))
+                             (/= (second vertex-indices) (third vertex-indices)))
+                        (setf (aref indices (+ 2 index-ptr)) (first vertex-indices))
+                        (setf (aref indices (+ 1 index-ptr)) (third vertex-indices))
+                        (setf (aref indices (+ 0 index-ptr)) (second vertex-indices))
+                        (incf index-ptr 3))
+                       (T
+                        (dbg "Ignoring degenerate face: ~a" vertex-indices))))))
     (values (if reduce-vertices
                 (make-array (length vertices) :element-type (array-element-type vertices) :initial-contents vertices)
                 in-vertices)
-            indices)))
+            (if (= index-ptr (length indices))
+                indices
+                (replace (make-array index-ptr :element-type (array-element-type indices)) indices)))))
 
 (defun convex-hull (vertices &key (reduce-vertices T) (eps 0.0001d0) (extrude-if-flat T))
   (multiple-value-bind (mesh-builder vertices extruded-p)
