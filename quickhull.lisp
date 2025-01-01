@@ -224,7 +224,7 @@
                      do (setf (face-plane face) (plane normal (v vertices a))))
                (dotimes (i num-vertices (values mesh-builder vertices extruded-p))
                  (loop for face across (faces mesh-builder)
-                       until (add-point face vertices i eps2)))))))))))
+                       until (add-point face vertices i .00001 #+no eps2)))))))))))
 
 (defun reorder-horizon-edges (horizon-edges half-edges)
   (loop for i from 0 below (1- (length horizon-edges))
@@ -380,7 +380,7 @@
                                                do (if (/= point active-index)
                                                       (loop initially (dbg "B ~a" point)
                                                             for j from 0 below horizon-edge-count
-                                                            until (add-point (aref faces (aref new-face-indices j)) vertices point eps2))
+                                                            until (add-point (aref faces (aref new-face-indices j)) vertices point .00001 #+no eps2))
                                                       (dbg "A ~a" point))))
                                 ;; Increase our stack again if necessary
                                 (loop for face-index across new-face-indices
