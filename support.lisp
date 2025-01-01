@@ -28,12 +28,13 @@
    "Point cloud has no volume. All points lie in a 2-dimensional plane (modulo tolerance)."))
 
 (declaim (inline dbg))
-#++
+#+quickhull-debug
 (defun dbg (format &rest args)
   (if (stringp format)
       (format *debug-io* "~&~?~%" format args)
       (apply #'dbg "~a" format args)))
-#-+
+
+#-quickhull-debug
 (defun dbg (format &rest args)
   (declare (ignore format args)))
 
