@@ -4,9 +4,9 @@
   :author "Yukari Hafner <shinmera@tymoon.eu>"
   :maintainer "Yukari Hafner <shinmera@tymoon.eu>"
   :description "An implementation of the Quickhull convex hull construction algorithm"
-  :homepage "https://shirakumo.github.io/quickhull/"
-  :bug-tracker "https://github.com/shirakumo/quickhull/issues"
-  :source-control (:git "https://github.com/shirakumo/quickhull.git")
+  :homepage "https://shirakumo.org/docs/quickhull/"
+  :bug-tracker "https://shirakumo.org/project/quickhull/issues"
+  :source-control (:git "https://shirakumo.org/project/quickhull.git")
   :serial T
   :components ((:file "package")
                (:file "support")
